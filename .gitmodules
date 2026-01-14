@@ -1,0 +1,3 @@
+[submodule "homework3/audit_nft/lib/openzeppelin-contracts"]
+	path = homework3/audit_nft/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
