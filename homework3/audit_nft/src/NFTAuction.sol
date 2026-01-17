@@ -12,4 +12,8 @@ contract NFTAuction is ERC721{
         require(bidAmount > highestBid, "Bid too low");
         highestBid = bidAmount;
     }
+
+    function mintNFT(address to, uint256 tokenId) public {
+        _mint(to, tokenId);
+    }   
 }
