@@ -37,6 +37,8 @@ contract Auction {
     mapping(uint256 tokenHash => AuctionItem) private _owners;
 
     event BidPlaced(address indexed bidder, uint256 amount, bool isNew);
+    
+    //TODO：添加更多事件
 
     /**
      *  出价
