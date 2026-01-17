@@ -401,9 +401,22 @@ contract Auction {
         return (ethAmount * uint256(price)) / 1e8;
     }
     function convertERC20toUSD(uint256 fundTypeId,uint256 erc20Amount) public view returns (uint256) {
-        int256 price = getLatestPrice(fundTypeId);
-        require(price > 0, "Invalid price");
-        return (ethAmount * uint256(price));
+         // 验证代币地址
+        require(token != address(0), "Invalid token address");
+        require(tokenAmount > 0, "Token amount must be > 0");
+        
+        // 获取价格
+        uint256 price = getTokenPrice(token);
+        
+        // 获取代币小数位
+        uint8 tokenDecimals = getTokenDecimals(token);
+        
+        // 计算USD价值
+        // 公式：usdValue = tokenAmount * price / 10^tokenDecimals
+        // price已经有8位小数，所以结果也有8位小数
+        usdValue = (tokenAmount * price) / (10 ** uint256(tokenDecimals));
+        
+        return usdValue;
     }
     
     /**
@@ -415,6 +428,72 @@ contract Auction {
         return (usdAmount * 1e8) / uint256(price);
     }
 
+    /**
+     * @dev 获取代币价格（带验证）
+     * @param token 代币地址
+     * @return price 价格（带8位小数）
+     */
+    function getTokenPrice(address token) public view returns (uint256 price) {
+        // 检查价格预言机是否设置
+        AggregatorV3Interface priceFeed = priceFeeds[token];
+        require(address(priceFeed) != address(0), "Price feed not set");
+        
+        // 获取最新价格数据
+        (, int256 answer, , uint256 updatedAt, ) = priceFeed.latestRoundData();
+        
+        // 验证价格有效性
+        require(answer > 0, "Invalid price");
+        require(block.timestamp - updatedAt <= 1 hours, "Stale price");
+        
+        return uint256(answer);
+    }
+    
+    /**
+     * @dev 获取代币小数位
+     * @param token 代币地址
+     * @return decimals 小数位
+     */
+    function getTokenDecimals(address token) public view returns (uint8) {
+        try IERC20Metadata(token).decimals() returns (uint8 decimals) {
+            return decimals;
+        } catch {
+            // 如果无法获取，返回默认值
+            return DEFAULT_DECIMALS;
+        }
+    }
+
+    /**
+     * @dev 获取代币价格和元数据
+     */
+    function getTokenPriceInfo(address token) 
+        external 
+        view 
+        returns (
+            uint256 price,
+            uint8 tokenDecimals,
+            uint8 priceFeedDecimals,
+            string memory tokenSymbol,
+            bool isPriceFeedSet
+        ) 
+    {
+        tokenDecimals = getTokenDecimals(token);
+        priceFeedDecimals = CHAINLINK_DECIMALS;
+        isPriceFeedSet = address(priceFeeds[token]) != address(0);
+        
+        try IERC20Metadata(token).symbol() returns (string memory symbol) {
+            tokenSymbol = symbol;
+        } catch {
+            tokenSymbol = "UNKNOWN";
+        }
+        
+        if (isPriceFeedSet) {
+            price = getTokenPrice(token);
+        } else {
+            price = 0;
+        }
+        
+        return (price, tokenDecimals, priceFeedDecimals, tokenSymbol, isPriceFeedSet);
+    }
 
     function getAuctionId(address nftContract, uint256 tokenId) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(nftContract, tokenId));
