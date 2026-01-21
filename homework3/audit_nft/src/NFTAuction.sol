@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "chainlink-evm/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
 contract NFTAuction {
     // Chainlink 价格预言机
@@ -10,6 +14,8 @@ contract NFTAuction {
     
     enum FundType { ETH, USD, ERC20 }
 
+    // 定义默认小数位数为 18
+    uint8 public constant DEFAULT_DECIMALS = 18;
     /**
      *  买家支付的金额结构体（暂时没用）
     */
@@ -43,7 +49,7 @@ contract NFTAuction {
         AuctionStatus status;    // 拍卖状态
     }
 
-    mapping(uint256 => AggregatorV3Interface) private _priceFeeds;
+    mapping(address => AggregatorV3Interface) private _priceFeeds;
 
     //每个拍卖的出价记录
     mapping(uint256  => mapping(address=>Bid)) private _bidsForToken;
@@ -53,11 +59,11 @@ contract NFTAuction {
 
     
     //最高出价者支付的金额
-    mapping(address => mapping(uint256 => PaidMoney)) private _paidAmounts;
-    mapping(address => uint256[]) private _paidFundTypes;
+    mapping(address => mapping(address => PaidMoney)) private _paidAmounts;
+    mapping(address => address[]) private _paidFundTypes;
 
     //拍品和拍品对应Owner的映射
-    mapping(uint256 auctionId => AuctionItem) private _owners;
+    mapping(uint256  => AuctionItem) private _owners;
 
     // 支持的代币列表
     address[] public supportedTokens;
@@ -65,7 +71,7 @@ contract NFTAuction {
     event BidPlaced(address indexed bidder, uint256 amount, bool isNew);
 
     event AuctionCreated(
-        bytes32 indexed auctionId,
+        uint256 indexed auctionId,
         address indexed creator,
         address acceptedToken,
         uint256 minBidUSD,
@@ -74,7 +80,7 @@ contract NFTAuction {
     );
     
     event NewBid(
-        bytes32 indexed auctionId,
+        uint256 indexed auctionId,
         uint256 indexed bidId,
         address indexed bidder,
         address token,
@@ -84,13 +90,13 @@ contract NFTAuction {
     );
     
     event BidUpdated(
-        bytes32 indexed auctionId,
+        uint256 indexed auctionId,
         uint256 indexed bidId,
         uint256 newUsdValue
     );
     
     event AuctionEnded(
-        bytes32 indexed auctionId,
+        uint256 indexed auctionId,
         address indexed winner,
         uint256 winningBidId,
         uint256 winningAmountUSD
@@ -104,37 +110,41 @@ contract NFTAuction {
     // ============ 构造函数 ============
     constructor() {
         // 初始化 ETH/USD 价格预言机（Sepolia 测试网）
-         uint256 fundTypeId = getFundTypeId(FundType.ETH,address(0));
-        _setPriceFeed(fundTypeId, address(0x694AA1769357215DE4FAC081bf1f309aDC325306));
+        _setPriceFeed(address(0), address(0x694AA1769357215DE4FAC081bf1f309aDC325306));
     }
 
     /**
      * @dev 设置代币价格预言机
-     * @param token 代币地址（address(0) 表示 ETH）
+     * @param fundAddress 代币地址（address(0) 表示 ETH）
      * @param priceFeed Chainlink 预言机地址
      */
-    function setPriceFeed(address token, address priceFeed)  {
-         uint256 fundTypeId = getFundTypeId(FundType.ETH,fundAddress);
-        _setPriceFeed(fundTypeId, priceFeed);
+    function setPriceFeed(address fundAddress, address priceFeed) public {
+        _setPriceFeed(fundAddress, priceFeed);
     }
     
-    function _setPriceFeed(uint256 fundTypeId, address priceFeed) internal {
-        _priceFeeds[fundTypeId] = AggregatorV3Interface(priceFeed);
+    function _setPriceFeed(address fundAddress, address priceFeed) internal {
+        
+        if(fundAddress == address(0)){
+            //uint256 fundTypeId = getFundTypeId(FundType.ETH, fundAddress);
+           _priceFeeds[fundAddress] = AggregatorV3Interface(priceFeed);
+        }
+
         if (fundAddress != address(0)) {
+           _priceFeeds[fundAddress] = AggregatorV3Interface(priceFeed);
             // 添加到支持的代币列表（如果未存在）
             bool exists = false;
             for (uint i = 0; i < supportedTokens.length; i++) {
-                if (supportedTokens[i] == token) {
+                if (supportedTokens[i] == fundAddress) {
                     exists = true;
                     break;
                 }
             }
             if (!exists) {
-                supportedTokens.push(token);
+                supportedTokens.push(fundAddress);
             }
         }
-        
-        emit PriceFeedUpdated(token, priceFeed);
+
+        emit PriceFeedUpdated(fundAddress, priceFeed);
     }
 
     /**
@@ -152,21 +162,21 @@ contract NFTAuction {
         require(highestBidderAddress == msg.sender, "lower bidder do not have to pay ");
         */
        
-        uint256 fundTypeId = getFundTypeId(FundType.ETH, address(0));
+        //uint256 fundTypeId = getFundTypeId(FundType.ETH, address(0));
     
 
-        mapping(uint256 => PaidMoney) storage paidMoneyMap = _paidAmounts[msg.sender];
-        PaidMoney storage paidMoney = paidMoneyMap[fundTypeId];
+        mapping(address => PaidMoney) storage paidMoneyMap = _paidAmounts[msg.sender];
+        PaidMoney storage paidMoney = paidMoneyMap[address(0)];
         if(paidMoney.isExist == false){
             //新增
-            paidMoney.fundAddress = msg.address;
+            paidMoney.fundAddress = msg.sender;
             paidMoney.fundType = FundType.ETH;
-             _paidFundTypes[msg.address].push(fundTypeId);
-            paidMoney.amount =amount;
+             _paidFundTypes[msg.sender].push(address(0));
+            paidMoney.amount =msg.value;
             paidMoney.isExist=true;
         }else{
             //修改
-            paidMoney.amount += amount;
+            paidMoney.amount += msg.value;
         }
 
     }
@@ -186,17 +196,17 @@ contract NFTAuction {
         require(highestBidderAddress == msg.sender, "lower bidder do not have to pay ");
         Bid storage highestBid = bids[highestBidderAddress];  
         */
-        uint256 fundTypeId = getFundTypeId(FundType.ERC20, ERC20Address);
+        //uint256 fundTypeId = getFundTypeId(FundType.ERC20, ERC20Address);
 
         IERC20 token = IERC20(ERC20Address);
         token.transferFrom(msg.sender, address(this), amount);   
         
-        mapping(uint256 => PaidMoney) storage paidMoneyMap = _paidAmounts[msg.sender];
-        PaidMoney storage paidMoney = paidMoneyMap[fundTypeId];
+        mapping(address => PaidMoney) storage paidMoneyMap = _paidAmounts[msg.sender];
+        PaidMoney storage paidMoney = paidMoneyMap[ERC20Address];
         if(paidMoney.fundAddress ==address(0)){
             paidMoney.fundAddress = ERC20Address;
             paidMoney.fundType = FundType.ERC20;
-             _paidFundTypes[ERC20Address].push(fundTypeId);
+             _paidFundTypes[msg.sender].push(ERC20Address);
             //新增
             paidMoney.amount =amount;
         }else{
@@ -207,11 +217,11 @@ contract NFTAuction {
     
     
 
-    function existsPaidFundType(address bidder, FundType fundType) internal view returns (bool) {
+    function existsPaidFundType(address bidder, address fundAddress) internal view returns (bool) {
         
-        uint256[] storage fundTypes = _paidFundTypes[bidder];
+        address[] storage fundTypes = _paidFundTypes[bidder];
         for (uint i = 0; i < fundTypes.length; i++) {
-            if (fundTypes[i] == uint256(fundType)) {
+            if (fundTypes[i] == fundAddress) {
                 return true;
             }
         }
@@ -232,36 +242,36 @@ contract NFTAuction {
     */
     function placeBid(address nftContract,uint256 tokenId, uint256 bidAmount) public {
         require(nftContract !=  address(0), "unlegal address");
-        bytes32 auctionId =  getAuctionId(nftContract, tokenId);
+        uint256 auctionId =  getAuctionId(nftContract, tokenId);
         require(bidAmount >= _owners[auctionId].minBidUSD, "Bid amount must be greater than minBidUSD");
         
         require(_owners[auctionId].seller !=  address(0), "auction item not exist");
-        require(_owners[auctionId].isActive == true, "auction item has not been started");    
+        require(_owners[auctionId].status == AuctionStatus.ACTIVE, "auction item has not been started");    
         require(_owners[auctionId].status != AuctionStatus.ENDED, "auction item has finished");    
 
         mapping(address=>Bid) storage bids = _bidsForToken[auctionId];
         address highestBidderAddress = _highestBidForToken[auctionId];       
         Bid storage highestBid = bids[highestBidderAddress];
 
-        require(bidAmount > highestBid.amount, "Bid too low");
+        require(bidAmount > highestBid.amountUSD, "Bid too low");
 
         // 可以添加基于实时价格的复杂逻辑
-        int256 currentPrice = getLatestPrice();
-        emit PriceUpdated(currentPrice);
+        int256 currentPrice = getLatestPrice(nftContract);
+        //emit PriceUpdated(currentPrice);
 
         Bid storage existingBid = bids[msg.sender];
         if (existingBid.bidder == address(0)) {
             // 第一次出价
             bids[msg.sender] = Bid({
                 bidder: msg.sender,
-                amount: bidAmount,
+                amountUSD: bidAmount,
                 timestamp: block.timestamp,
                 bidCount: 1
             });
             emit BidPlaced(msg.sender, bidAmount, true);
         } else {
             // 更新出价
-            existingBid.amount = bidAmount;
+            existingBid.amountUSD = bidAmount;
             existingBid.timestamp = block.timestamp;
             existingBid.bidCount += 1;
             emit BidPlaced(msg.sender, bidAmount, false);
@@ -276,21 +286,21 @@ contract NFTAuction {
     function listAuctionItem(address nftContract, uint256 tokenId,uint256 startTime,uint256 endTime,AuctionStatus status,uint256 minBidUSD) public {
         //TODO:权限验证
         require(nftContract !=  address(0), "unlegal address");
-        require(IERC721(nftContract).ownerOf(tokenId), "Only the owner can set the auction item") ;
+        require(IERC721(nftContract).ownerOf(tokenId) !=address(0), "Only the owner can set the auction item") ;
         
         // 验证 NFT 是否已授权给本合约
         require(
-            nftContract.getApproved(tokenId) == address(this) ||
-            nftContract.isApprovedForAll(msg.sender, address(this)),
+            IERC721(nftContract).getApproved(tokenId) == address(this) ||
+            IERC721(nftContract).isApprovedForAll(msg.sender, address(this)),
             "NFT not approved"
         );
         
         //调用NFT合约，验证msg.sender是否为tokenId的拥有者
-        bytes32 auctionId =  getAuctionId(nftContract, tokenId);
+        uint256 auctionId =  getAuctionId(nftContract, tokenId);
         _owners[auctionId] = AuctionItem({   
             nftContract: nftContract,
             tokenId: tokenId,
-            owner: msg.sender,
+            seller: msg.sender,
             startTime: startTime,
             endTime: endTime,
             status: status,
@@ -301,10 +311,10 @@ contract NFTAuction {
      * 开始拍卖
      * 
     */
-    function startAuction(address nftContract, uint256 tokenId) public  returns (bytes32) {
+    function startAuction(address nftContract, uint256 tokenId) public  returns (uint256) {
         //TODO:权限验证
         require(nftContract !=  address(0), "unlegal address");
-        bytes32 auctionId =  getAuctionId(nftContract, tokenId);
+        uint256 auctionId =  getAuctionId(nftContract, tokenId);
         require(_owners[auctionId].seller !=  address(0), "auction item not exist");
         require(_owners[auctionId].status != AuctionStatus.ACTIVE, "auction item has finished");    
         _owners[auctionId].status = AuctionStatus.ACTIVE;
@@ -315,36 +325,34 @@ contract NFTAuction {
      * 结束拍卖
      * 
     */
-    function endAuction(address nftContract, uint256 tokenId) public  returns (bytes32) {
+    function endAuction(address nftContract, uint256 tokenId) public  returns (uint256) {
         //TODO:权限验证
         
-        require(nftContract !=  address(0), "unlegal address");
+        require(nftContract !=  address(0), "unlegal address"); 
+        uint256 auctionId =  getAuctionId(nftContract, tokenId);
         require(_owners[auctionId].seller !=  address(0), "auction item not exist");
-        require(_owners[auctionId].status != AuctionStatus.END, "auction item is already finished");     
-        bytes32 auctionId =  getAuctionId(nftContract, tokenId);
+        require(_owners[auctionId].status != AuctionStatus.ENDED, "auction item is already finished");    
         mapping(address=>Bid) storage bids = _bidsForToken[auctionId];
         address highestBidderAddress = _highestBidForToken[auctionId];       
         Bid storage highestBid = bids[highestBidderAddress];
 
-
+        uint256 paidAmount =0;
         for(uint i=0;i<_paidFundTypes[highestBidderAddress].length;i++){
-            uint256 fundTypeId = _paidFundTypes[highestBidderAddress][i];
-            if(fundTypeId == address(0)){
+            address fundAddress = _paidFundTypes[highestBidderAddress][i];
+            if(fundAddress == address(0)){
                 //ETH
-                uint256 ethAmount = _paidAmounts[highestBidderAddress][fundTypeId].amount;
-                paidAmount += convertETHtoUSD(fundTypeId,ethAmount);
+                uint256 ethAmount = _paidAmounts[highestBidderAddress][fundAddress].amount;
+                paidAmount += convertETHtoUSD(fundAddress,ethAmount);
             }else{
                 //ERC20
-                uint256 erc20Amount = _paidAmounts[highestBidderAddress][fundTypeId].amount;
-                paidAmount += convertERC20toUSD(fundTypeId,erc20Amount);
+                uint256 erc20Amount = _paidAmounts[highestBidderAddress][fundAddress].amount;
+                paidAmount += convertERC20toUSD(fundAddress,erc20Amount);
             }
         }
 
-        require(paidAmount >= highestBid.amount, "paid money is not enough");
-        _owners[auctionId].status = AuctionStatus.END;        
+        require(paidAmount >= highestBid.amountUSD, "paid money is not enough");
+        _owners[auctionId].status = AuctionStatus.ENDED;        
 
-        //NFT转移        
-        address highestBidderAddress = _highestBidForToken[auctionId];
         //TODO: 资金结算
                        
         IERC721(nftContract).safeTransferFrom(_owners[auctionId].seller, highestBidderAddress, tokenId);
@@ -355,30 +363,30 @@ contract NFTAuction {
     */
     function withdrawFunds(address nftContract, uint256 tokenId) public {
         require(nftContract !=  address(0), "unlegal address");
-        bytes32 auctionId =  getAuctionId(nftContract, tokenId);
+        uint256 auctionId =  getAuctionId(nftContract, tokenId);
         require(_owners[auctionId].seller !=  address(0), "unlegal address");   
         address highestBidderAddress = _highestBidForToken[auctionId];      
         mapping(address=>Bid) storage bids = _bidsForToken[auctionId];     
         Bid storage highestBid = bids[highestBidderAddress];
-        uint256 amount = _paidAmounts[highestBidderAddress].amount; 
+        uint256 amount = _paidAmounts[highestBidderAddress][nftContract].amount; 
         require(_owners[auctionId].seller ==  msg.sender, "not seller");   
-        require(amount >= highestBid.amount, "No funds to withdraw");
+        require(amount >= highestBid.amountUSD, "No funds to withdraw");
 
 
 
-        for(uint i=0;i<_paidFundTypes.length;i++){
-            uint256 fundTypeId = _paidFundTypes[i];
-            if(fundTypeId == address(0)){
+        for(uint i=0;i<_paidFundTypes[highestBidderAddress].length;i++){
+            address fundAddress = _paidFundTypes[highestBidderAddress][i];
+            if(fundAddress == address(0)){
                 
                 //ETH            
-                uint256 ethAmount = _paidAmounts[highestBid.bidder][fundTypeId].amount;
-                _paidAmounts[highestBid.bidder][fundTypeId].amount= 0;
+                uint256 ethAmount = _paidAmounts[highestBidderAddress][fundAddress].amount;
+                _paidAmounts[highestBidderAddress][fundAddress].amount= 0;
                 payable(msg.sender).transfer(ethAmount); 
             }else{
                 //ERC20
-                uint256 erc20Amount = _paidAmounts[highestBidderAddress][fundTypeId].amount;
-                _paidAmounts[highestBid.bidder][fundTypeId].amount= 0;                
-                IERC20 token = IERC20(paidMoney.fundAddress);
+                uint256 erc20Amount = _paidAmounts[highestBidderAddress][fundAddress].amount;
+                _paidAmounts[highestBid.bidder][fundAddress].amount= 0;                
+                IERC20 token = IERC20(_paidAmounts[highestBidderAddress][fundAddress].fundAddress);
                 token.transferFrom(address(this), msg.sender, erc20Amount);  
             }
         }
@@ -389,46 +397,37 @@ contract NFTAuction {
     /**
      *  获取最新ETH/USD价格
      */
-    function getLatestPrice(uint256 fundTypeId) public view returns (int256) {
-        (, int256 price, , , ) = _priceFeeds[fundTypeId].latestRoundData();
+    function getLatestPrice(address fundAddress) public view returns (int256) {
+        (, int256 price, , , ) = _priceFeeds[fundAddress].latestRoundData();
         return price;
     }
 
     /**
      *  将ETH转换为USD
      */
-    function convertETHtoUSD(uint256 fundTypeId,uint256 ethAmount) public view returns (uint256) {
+    function convertETHtoUSD(address fundAddress,uint256 ethAmount) public view returns (uint256) {
         int256 price = getLatestPrice(fundAddress);
         require(price > 0, "Invalid price");
         return (ethAmount * uint256(price)) / 1e8;
     }
-    function convertERC20toUSD(uint256 fundTypeId,uint256 erc20Amount) public view returns (uint256) {
+    function convertERC20toUSD(address fundAddress,uint256 erc20Amount) public view returns (uint256) {
          // 验证代币地址
-        require(token != address(0), "Invalid token address");
-        require(tokenAmount > 0, "Token amount must be > 0");
+        require(fundAddress != address(0), "Invalid token address");
+        require(erc20Amount > 0, "Token amount must be > 0");
         
         // 获取价格
-        uint256 price = getTokenPrice(token);
+        uint256 price = getTokenPrice(fundAddress);
         
         // 获取代币小数位
-        uint8 tokenDecimals = getTokenDecimals(token);
+        uint8 tokenDecimals = getTokenDecimals(fundAddress);
         
         // 计算USD价值
         // 公式：usdValue = tokenAmount * price / 10^tokenDecimals
         // price已经有8位小数，所以结果也有8位小数
-        usdValue = (tokenAmount * price) / (10 ** uint256(tokenDecimals));
+        return (erc20Amount * price) / (10 ** uint256(tokenDecimals));
         
-        return usdValue;
     }
     
-    /**
-     *  将USD转换为ETH
-     */
-    function convertUSDtoETH(uint256 usdAmount) public view returns (uint256) {
-        int256 price = getLatestPrice();
-        require(price > 0, "Invalid price");
-        return (usdAmount * 1e8) / uint256(price);
-    }
 
     /**
      * @dev 获取代币价格（带验证）
@@ -437,7 +436,7 @@ contract NFTAuction {
      */
     function getTokenPrice(address token) public view returns (uint256 price) {
         // 检查价格预言机是否设置
-        AggregatorV3Interface priceFeed = priceFeeds[token];
+        AggregatorV3Interface priceFeed = _priceFeeds[token];
         require(address(priceFeed) != address(0), "Price feed not set");
         
         // 获取最新价格数据
@@ -497,16 +496,14 @@ contract NFTAuction {
         return (price, tokenDecimals, priceFeedDecimals, tokenSymbol, isPriceFeedSet);
     }*/
 
-    function getAuctionId(address nftContract, uint256 tokenId) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(nftContract, tokenId));
+    function getAuctionId(address nftContract, uint256 tokenId) internal pure returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(nftContract, tokenId)));
     }
 
     
-    function getFundTypeId(FundType fundType, address addressERC) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(fundType, addressERC));
+
+    function getFundTypeId(FundType fundType, address addressERC) internal pure returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(fundType, addressERC)));
     }
-
-
-
 }   
 
