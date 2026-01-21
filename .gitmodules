@@ -1,3 +1,9 @@
 [submodule "homework3/audit_nft/lib/openzeppelin-contracts"]
 	path = homework3/audit_nft/lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "homework3/audit_nft/lib/chainlink"]
+	path = homework3/audit_nft/lib/chainlink
+	url = https://github.com/smartcontractkit/chainlink
+[submodule "homework3/audit_nft/lib/chainlink-evm"]
+	path = homework3/audit_nft/lib/chainlink-evm
+	url = https://github.com/smartcontractkit/chainlink-evm
