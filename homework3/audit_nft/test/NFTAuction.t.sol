@@ -35,8 +35,8 @@ contract NFTAuctionTest is Test {
         
         // 部署价格预言机
         ethPriceFeed = new MockAggregatorV3(2000 * 1e8); // $2000/ETH
-        usdcPriceFeed = new MockAggregatorV3(1 * 1e8);   // $1/USDC
-        daiPriceFeed = new MockAggregatorV3(1 * 1e8);    // $1/DAI
+        usdcPriceFeed = new MockAggregatorV3(1 * 1e18);   // $1/USDC
+        daiPriceFeed = new MockAggregatorV3(1 * 1e18);    // $1/DAI
         
         // 部署拍卖合约
         auction = new NFTAuction(address(ethPriceFeed));
@@ -60,8 +60,8 @@ contract NFTAuctionTest is Test {
         
         // 给竞拍者代币
         vm.prank(address(usdc));
-        usdc.mint(bidder1, 10000 * 1e6);
-        usdc.mint(bidder2, 10000 * 1e6);
+        usdc.mint(bidder1, 10000 * 1e18);
+        usdc.mint(bidder2, 10000 * 1e18);
         
         vm.prank(address(dai));
         dai.mint(bidder1, 10000 * 1e18);
@@ -229,8 +229,8 @@ contract NFTAuctionTest is Test {
     
         // 2. 竞拍者1用USDC支付保证金
         vm.startPrank(bidder1);
-        usdc.approve(address(auction), 2000 * 1e6);
-        auction.payWithERC20(address(usdc), 2000 * 1e6);
+        usdc.approve(address(auction), 2000 * 1e18);
+        auction.payWithERC20(address(usdc), 2000 * 1e18);
     
         // 3. 竞拍者1出价
         auction.placeBid(address(nft), TOKEN_ID_2, 1500 * 1e18);
