@@ -271,7 +271,7 @@ contract NFTAuction {
         require(bidAmount > highestBid.amountUSD, "Bid too low");
 
         // 可以添加基于实时价格的复杂逻辑
-        int256 currentPrice = getLatestPrice(nftContract);
+        //int256 currentPrice = getLatestPrice(nftContract);
         //emit PriceUpdated(currentPrice);
 
         Bid storage existingBid = bids[msg.sender];
@@ -292,7 +292,7 @@ contract NFTAuction {
             emit BidPlaced(msg.sender, bidAmount, false);
         }
 
-        _highestBidForToken[tokenId]=msg.sender;
+        _highestBidForToken[auctionId]=msg.sender;
     }
 
     /**
@@ -340,8 +340,7 @@ contract NFTAuction {
      * 结束拍卖
      * 
     */
-    function endAuction(address nftContract, uint256 tokenId) public  returns (uint256) {
-        //TODO:权限验证
+    function endAuction(address nftContract, uint256 tokenId) public  returns (uint256) {        
         
         require(nftContract !=  address(0), "unlegal address"); 
         uint256 auctionId =  getAuctionId(nftContract, tokenId);
@@ -368,7 +367,6 @@ contract NFTAuction {
         require(paidAmount >= highestBid.amountUSD, "paid money is not enough");
         _owners[auctionId].status = AuctionStatus.ENDED;        
 
-        //TODO: 资金结算
                        
         IERC721(nftContract).safeTransferFrom(_owners[auctionId].seller, highestBidderAddress, tokenId);
     }
@@ -385,7 +383,7 @@ contract NFTAuction {
         Bid storage highestBid = bids[highestBidderAddress];
         uint256 amount = _paidAmounts[highestBidderAddress][nftContract].amount; 
         require(_owners[auctionId].seller ==  msg.sender, "not seller");   
-        require(amount >= highestBid.amountUSD, "No funds to withdraw");
+        //require(amount >= highestBid.amountUSD, "No funds to withdraw");
 
 
 
