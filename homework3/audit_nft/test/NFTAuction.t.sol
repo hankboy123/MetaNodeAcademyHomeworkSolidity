@@ -73,8 +73,20 @@ contract NFTAuctionTest is Test {
     function test_Constructor() public {
         // 验证ETH价格预言机设置正确
         NFTAuction newAuction = new NFTAuction(address(ethPriceFeed));
-        assertEq(address(newAuction), address(newAuction));
+        //assertEq(address(newAuction), address(newAuction));
     
+        // 验证代币已添加到支持列表
+        address[] memory supportedTokens = newAuction.getAllSupportedTokens();
+        bool found = false;
+        for (uint i = 0; i < supportedTokens.length; i++) {
+            if (supportedTokens[i] == address(0)) {
+               found = true;
+              break;
+            }
+        }
+
+        assertTrue(found, "Token should be in supported list");
+
         // 验证默认小数位数
         assertEq(auction.DEFAULT_DECIMALS(), 18);
     }
