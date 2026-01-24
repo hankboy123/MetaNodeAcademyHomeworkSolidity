@@ -321,6 +321,8 @@ contract NFTAuction {
             status: status,
             minBidUSD: minBidUSD
         });
+
+        emit AuctionCreated(auctionId,msg.sender,address(0),minBidUSD,startTime,endTime);
     }
     /**
      * 开始拍卖
@@ -509,7 +511,7 @@ contract NFTAuction {
         return (price, tokenDecimals, priceFeedDecimals, tokenSymbol, isPriceFeedSet);
     }*/
 
-    function getAuctionId(address nftContract, uint256 tokenId) internal pure returns (uint256) {
+    function getAuctionId(address nftContract, uint256 tokenId) public pure returns (uint256) {
         return uint256(keccak256(abi.encodePacked(nftContract, tokenId)));
     }
 

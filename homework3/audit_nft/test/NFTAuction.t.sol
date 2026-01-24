@@ -362,9 +362,9 @@ contract NFTAuctionTest is Test {
 
     function test_ConvertERC20toUSD() public {
         // 设置USDC价格为$1.00
-        usdcPriceFeed.setPrice(1 * 1e8);
+        usdcPriceFeed.setPrice(1 * 1e18);
     
-        uint256 usdcAmount = 1000 * 1e6; // 1000 USDC (6 decimals)
+        uint256 usdcAmount = 1000 * 1e18; // 1000 USDC (6 decimals)
         uint256 expectedUSD = 1000 * 1e18; // $1000 (18 decimals)
     
         uint256 result = auction.convertERC20toUSD(address(usdc), usdcAmount);
@@ -372,7 +372,7 @@ contract NFTAuctionTest is Test {
     }
 
     function test_GetTokenPrice() public {
-        uint256 expectedPrice = 1 * 1e8; // $1.00
+        uint256 expectedPrice = 1 * 1e18; // $1.00
         uint256 price = auction.getTokenPrice(address(usdc));
         assertEq(price, expectedPrice, "Token price incorrect");
     
@@ -388,8 +388,8 @@ contract NFTAuctionTest is Test {
     
         // 测试 AuctionCreated 事件
         vm.expectEmit(true, true, true, true);
-        /*
-        emit AuctionCreated(
+        
+        emit NFTAuction.AuctionCreated(
             auction.getAuctionId(address(nft), TOKEN_ID_1),
             seller,
             address(0),
@@ -405,7 +405,7 @@ contract NFTAuctionTest is Test {
             block.timestamp + 1 days,
             NFTAuction.AuctionStatus.PENDING,
             MIN_BID_USD
-        );*/
+        );
     
         vm.stopPrank();
     }   
