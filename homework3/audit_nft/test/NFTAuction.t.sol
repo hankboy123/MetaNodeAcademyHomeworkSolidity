@@ -7,9 +7,10 @@ import {MyNFT} from "../src/MyNFT.sol";
 import {MockAggregatorV3} from "./MockAggregatorV3.t.sol";
 import {MockERC20} from "./MockERC20.t.sol";
 import {MockNFT} from "./MockNFT.t.sol";
+import "chainlink-evm/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 contract NFTAuctionTest is Test {
-   NFTAuction public auction;
+    NFTAuction public auction;
     MockNFT public nft;
     MockERC20 public usdc;
     MockERC20 public dai;
@@ -73,20 +74,9 @@ contract NFTAuctionTest is Test {
     function test_Constructor() public {
         // 验证ETH价格预言机设置正确
         NFTAuction newAuction = new NFTAuction(address(ethPriceFeed));
-        //assertEq(address(newAuction), address(newAuction));
-    
-        // 验证代币已添加到支持列表
-        address[] memory supportedTokens = newAuction.getAllSupportedTokens();
-        bool found = false;
-        for (uint i = 0; i < supportedTokens.length; i++) {
-            if (supportedTokens[i] == address(0)) {
-               found = true;
-              break;
-            }
-        }
-
-        assertTrue(found, "Token should be in supported list");
-
+        AggregatorV3Interface actualPriceFeed = newAuction.getPriceFeed(address(0));
+        assertEq(address(actualPriceFeed), address(ethPriceFeed));
+        
         // 验证默认小数位数
         assertEq(auction.DEFAULT_DECIMALS(), 18);
     }
@@ -365,7 +355,7 @@ contract NFTAuctionTest is Test {
     }
 
     function test_ConvertERC20toUSD() public {
-    // 设置USDC价格为$1.00
+        // 设置USDC价格为$1.00
         usdcPriceFeed.setPrice(1 * 1e8);
     
         uint256 usdcAmount = 1000 * 1e6; // 1000 USDC (6 decimals)

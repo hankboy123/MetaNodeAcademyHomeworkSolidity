@@ -147,6 +147,10 @@ contract NFTAuction {
         emit PriceFeedUpdated(fundAddress, priceFeed);
     }
 
+    function getPriceFeed(address fundAddress) public view returns (AggregatorV3Interface) {
+        return _priceFeeds[fundAddress];
+    }   
+
     /**
      * 支付竞价
     */
