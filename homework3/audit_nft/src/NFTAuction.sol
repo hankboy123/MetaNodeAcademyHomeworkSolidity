@@ -108,9 +108,9 @@ contract NFTAuction {
     );
 
     // ============ 构造函数 ============
-    constructor() {
+    constructor(address priceFeedETHAddress) {
         // 初始化 ETH/USD 价格预言机（Sepolia 测试网）
-        _setPriceFeed(address(0), address(0x694AA1769357215DE4FAC081bf1f309aDC325306));
+        _setPriceFeed(address(0), priceFeedETHAddress);
     }
 
     /**
@@ -236,6 +236,8 @@ contract NFTAuction {
         }
         return false;
     }
+
+    
 
     /**
      *  出价
@@ -504,6 +506,11 @@ contract NFTAuction {
 
     function getFundTypeId(FundType fundType, address addressERC) internal pure returns (uint256) {
         return uint256(keccak256(abi.encodePacked(fundType, addressERC)));
+    }
+
+    // 添加这个函数返回整个数组
+    function getAllSupportedTokens() external view returns (address[] memory) {
+        return supportedTokens;
     }
 }   
 
