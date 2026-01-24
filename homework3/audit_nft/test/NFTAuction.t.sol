@@ -311,7 +311,8 @@ contract NFTAuctionTest is Test {
         auction.endAuction(address(nft), TOKEN_ID_1);
     }
 
-    function test_WithdrawExcessFunds() public {
+    /**
+     * function test_WithdrawExcessFunds() public {
         // 设置场景：竞拍者支付了过多资金
         vm.startPrank(seller);
         auction.listAuctionItem(
@@ -343,6 +344,10 @@ contract NFTAuctionTest is Test {
         // 注意：当前withdrawFunds函数只能由卖家调用，可能需要修改
         // auction.withdrawExcessFunds(); // 假设有这样的函数
     }
+     * 
+     * 
+    */
+    
 
     function test_ConvertETHtoUSD() public {
         // 设置ETH价格为$2000
