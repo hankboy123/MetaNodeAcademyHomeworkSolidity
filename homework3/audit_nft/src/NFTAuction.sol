@@ -8,6 +8,7 @@ import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
 contract NFTAuction {
+    address public owner;
     // Chainlink 价格预言机
 
     enum AuctionStatus { PENDING, ACTIVE, ENDED, CANCELLED }
@@ -107,8 +108,16 @@ contract NFTAuction {
         address priceFeed
     );
 
+   
+    // Modifier：检查调用者是否是 owner
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not contract owner");
+        _; // 继续执行原函数
+    }
+
     // ============ 构造函数 ============
     constructor(address priceFeedETHAddress) {
+        owner = msg.sender;
         // 初始化 ETH/USD 价格预言机（Sepolia 测试网）
         _setPriceFeed(address(0), priceFeedETHAddress);
     }
@@ -118,11 +127,11 @@ contract NFTAuction {
      * @param fundAddress 代币地址（address(0) 表示 ETH）
      * @param priceFeed Chainlink 预言机地址
      */
-    function setPriceFeed(address fundAddress, address priceFeed) public {
+    function setPriceFeed(address fundAddress, address priceFeed)  public  onlyOwner{
         _setPriceFeed(fundAddress, priceFeed);
     }
     
-    function _setPriceFeed(address fundAddress, address priceFeed) internal {
+    function _setPriceFeed(address fundAddress, address priceFeed)  internal onlyOwner{
         
         if(fundAddress == address(0)){
             //uint256 fundTypeId = getFundTypeId(FundType.ETH, fundAddress);

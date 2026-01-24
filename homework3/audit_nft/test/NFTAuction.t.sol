@@ -28,7 +28,8 @@ contract NFTAuctionTest is Test {
     uint256 constant START_TIME = 1000;
     uint256 constant END_TIME = 2000;
     uint256 constant MIN_BID_USD = 1000 * 1e18; // 1000 USD (18 decimals)
-    
+ 
+
     function setUp() public {
         vm.startPrank(owner);
         
@@ -76,7 +77,7 @@ contract NFTAuctionTest is Test {
         NFTAuction newAuction = new NFTAuction(address(ethPriceFeed));
         AggregatorV3Interface actualPriceFeed = newAuction.getPriceFeed(address(0));
         assertEq(address(actualPriceFeed), address(ethPriceFeed));
-        
+
         // 验证默认小数位数
         assertEq(auction.DEFAULT_DECIMALS(), 18);
     }
