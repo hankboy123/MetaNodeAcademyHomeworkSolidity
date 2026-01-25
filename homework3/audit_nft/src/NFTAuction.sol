@@ -113,8 +113,7 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     // ============ 构造函数 ============
     constructor() {
-        _disableInitializers();
-       
+        _disableInitializers();       
     }
 
     // ============ 初始化函数 ============
