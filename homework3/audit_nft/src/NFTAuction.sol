@@ -2,13 +2,14 @@
 pragma solidity ^0.8.13;
 
 import "chainlink-evm/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 
-contract NFTAuction {
-    address public owner;
+contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     // Chainlink 价格预言机
 
     enum AuctionStatus { PENDING, ACTIVE, ENDED, CANCELLED }
@@ -109,18 +110,25 @@ contract NFTAuction {
     );
 
    
-    // Modifier：检查调用者是否是 owner
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not contract owner");
-        _; // 继续执行原函数
-    }
 
     // ============ 构造函数 ============
-    constructor(address priceFeedETHAddress) {
-        owner = msg.sender;
+    constructor() {
+        _disableInitializers();
+       
+    }
+
+    // ============ 初始化函数 ============
+    function initialize(address priceFeedETHAddress) public initializer {
+        __Ownable_init(msg.sender);
+        //__UUPSUpgradeable_init();
+
         // 初始化 ETH/USD 价格预言机（Sepolia 测试网）
         _setPriceFeed(address(0), priceFeedETHAddress);
     }
+
+    // UUPS升级授权
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
 
     /**
      * @dev 设置代币价格预言机
@@ -524,6 +532,14 @@ contract NFTAuction {
     // 添加这个函数返回整个数组
     function getAllSupportedTokens() external view returns (address[] memory) {
         return supportedTokens;
+    }
+
+    // 版本控制（可选，便于管理升级）
+    uint256 public version;
+    
+    // 升级合约版本
+    function upgradeVersion() external onlyOwner {
+        version++;
     }
 }   
 
