@@ -54,10 +54,10 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     mapping(address => AggregatorV3Interface) private _priceFeeds;
 
     //每个拍卖的出价记录
-    mapping(uint256  => mapping(address=>Bid)) private _bidsForToken;
+    mapping(bytes32  => mapping(address=>Bid)) private _bidsForToken;
 
     //每个拍卖的最高出价
-    mapping(uint256  => address) private _highestBidForToken;
+    mapping(bytes32  => address) private _highestBidForToken;
 
     
     //最高出价者支付的金额
@@ -65,7 +65,7 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     mapping(address => address[]) private _paidFundTypes;
 
     //拍品和拍品对应Owner的映射
-    mapping(uint256  => AuctionItem) private _owners;
+    mapping(bytes32  => AuctionItem) private _owners;
 
     // 支持的代币列表
     address[] public supportedTokens;
@@ -73,7 +73,7 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     event BidPlaced(address indexed bidder, uint256 amount, bool isNew);
 
     event AuctionCreated(
-        uint256 indexed auctionId,
+        bytes32 indexed auctionId,
         address indexed creator,
         address acceptedToken,
         uint256 minBidUSD,
@@ -82,7 +82,7 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     );
     
     event NewBid(
-        uint256 indexed auctionId,
+        bytes32 indexed auctionId,
         uint256 indexed bidId,
         address indexed bidder,
         address token,
@@ -92,13 +92,13 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     );
     
     event BidUpdated(
-        uint256 indexed auctionId,
+        bytes32 indexed auctionId,
         uint256 indexed bidId,
         uint256 newUsdValue
     );
     
     event AuctionEnded(
-        uint256 indexed auctionId,
+        bytes32 indexed auctionId,
         address indexed winner,
         uint256 winningBidId,
         uint256 winningAmountUSD
@@ -265,7 +265,7 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     */
     function placeBid(address nftContract,uint256 tokenId, uint256 bidAmount) public {
         require(nftContract !=  address(0), "unlegal address");
-        uint256 auctionId =  getAuctionId(nftContract, tokenId);
+        bytes32 auctionId =  getAuctionId(nftContract, tokenId);
         require(bidAmount >= _owners[auctionId].minBidUSD, "Bid amount must be greater than minBidUSD");
         
         require(_owners[auctionId].seller !=  address(0), "auction item not exist");
@@ -319,7 +319,7 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         );
         
         //调用NFT合约，验证msg.sender是否为tokenId的拥有者
-        uint256 auctionId =  getAuctionId(nftContract, tokenId);
+        bytes32 auctionId =  getAuctionId(nftContract, tokenId);
         _owners[auctionId] = AuctionItem({   
             nftContract: nftContract,
             tokenId: tokenId,
@@ -336,10 +336,10 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
      * 开始拍卖
      * 
     */
-    function startAuction(address nftContract, uint256 tokenId) public  returns (uint256) {
+    function startAuction(address nftContract, uint256 tokenId) public  returns (bytes32) {
         //TODO:权限验证
         require(nftContract !=  address(0), "unlegal address");
-        uint256 auctionId =  getAuctionId(nftContract, tokenId);
+        bytes32 auctionId =  getAuctionId(nftContract, tokenId);
         require(_owners[auctionId].seller !=  address(0), "auction item not exist");
         require(_owners[auctionId].status != AuctionStatus.ACTIVE, "auction item has finished");    
         _owners[auctionId].status = AuctionStatus.ACTIVE;
@@ -350,10 +350,10 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
      * 结束拍卖
      * 
     */
-    function endAuction(address nftContract, uint256 tokenId) public  returns (uint256) {        
+    function endAuction(address nftContract, uint256 tokenId) public  returns (bytes32) {        
         
         require(nftContract !=  address(0), "unlegal address"); 
-        uint256 auctionId =  getAuctionId(nftContract, tokenId);
+        bytes32 auctionId =  getAuctionId(nftContract, tokenId);
         require(_owners[auctionId].seller !=  address(0), "auction item not exist");
         require(_owners[auctionId].status != AuctionStatus.ENDED, "auction item is already finished");    
         mapping(address=>Bid) storage bids = _bidsForToken[auctionId];
@@ -386,7 +386,7 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     */
     function withdrawFunds(address nftContract, uint256 tokenId) public {
         require(nftContract !=  address(0), "unlegal address");
-        uint256 auctionId =  getAuctionId(nftContract, tokenId);
+        bytes32 auctionId =  getAuctionId(nftContract, tokenId);
         require(_owners[auctionId].seller !=  address(0), "unlegal address");   
         address highestBidderAddress = _highestBidForToken[auctionId];      
         mapping(address=>Bid) storage bids = _bidsForToken[auctionId];     
@@ -519,8 +519,8 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         return (price, tokenDecimals, priceFeedDecimals, tokenSymbol, isPriceFeedSet);
     }*/
 
-    function getAuctionId(address nftContract, uint256 tokenId) public pure returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(nftContract, tokenId)));
+    function getAuctionId(address nftContract, uint256 tokenId) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(nftContract, tokenId));
     }
 
     
