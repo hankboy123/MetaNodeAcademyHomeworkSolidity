@@ -6,7 +6,7 @@ import "forge-std/Script.sol";
 import "../src/NFTAuction.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract DeployWithProxy is Script {
+contract DeployNFTAuction is Script {
     address constant SEPOLIA_ETH_USD_PRICE_FEED = 0x694AA1769357215DE4FAC081bf1f309aDC325306;
     
     function run() external {
