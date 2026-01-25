@@ -4,6 +4,12 @@ test = 'test'
 out = "out"
 libs = ["lib"]
 
+[rpc_endpoints]
+sepolia = "${SEPOLIA_RPC_URL}"
+
+[etherscan]
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
+
 # 重新映射
 remappings = [
     "@openzeppelin/=lib/openzeppelin-contracts/",
