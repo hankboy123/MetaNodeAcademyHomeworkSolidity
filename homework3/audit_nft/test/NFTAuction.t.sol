@@ -41,7 +41,7 @@ contract NFTAuctionTest is Test {
         
         // 部署拍卖合约
         NFTAuction impl = new NFTAuction();
-        bytes memory data = abi.encodeCall(NFTAuction.initialize, owner); 
+        bytes memory data = abi.encodeCall(NFTAuction.initialize, address(ethPriceFeed)); 
         // 将owner传入初始化函数，如果初始化函数设置所有者的话
 
         // 注意：代理的部署者可能不是owner，因为代理部署时使用的msg.sender是当前地址（可能是测试合约）
