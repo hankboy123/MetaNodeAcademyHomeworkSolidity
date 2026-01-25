@@ -540,5 +540,11 @@ contract NFTAuction is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function upgradeVersion() external onlyOwner {
         version++;
     }
+
+    // 自毁函数 - 只能由合约所有者调用
+    function destroy() external onlyOwner {
+        selfdestruct(payable(owner()));
+    }
+
 }   
 
